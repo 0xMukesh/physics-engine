@@ -10,6 +10,7 @@ public:
   Vector2 acceleration;
   Vector2 bounds;
   Color color;
+  bool isSelected;
 
   Entity(float radius, Vector2 position, Vector2 velocity, Vector2 acceleration,
          Vector2 bounds, Color color);

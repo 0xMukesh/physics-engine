@@ -6,7 +6,8 @@
 Entity::Entity(float radius, Vector2 position, Vector2 velocity,
                Vector2 acceleration, Vector2 bounds, Color color)
     : radius(radius), position(position), velocity(velocity),
-      acceleration(acceleration), bounds(bounds), color(color) {}
+      acceleration(acceleration), bounds(bounds), color(color),
+      isSelected(false) {}
 
 void Entity::updatePosition() {
   position.x += velocity.x;
@@ -47,7 +48,13 @@ void Entity::handleBoundaryCollision() {
   }
 }
 
-void Entity::draw() { DrawCircle(position.x, position.y, radius, color); }
+void Entity::draw() {
+  DrawCircle(position.x, position.y, radius, color);
+
+  if (isSelected) {
+    DrawCircleLines(position.x, position.y, radius + 2.0f, YELLOW);
+  }
+}
 
 void Entity::render() {
   updateVelocity();
