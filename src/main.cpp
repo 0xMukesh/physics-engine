@@ -1,4 +1,4 @@
-#include "constants.hpp"
+#include "common/constants.hpp"
 #include "core/entity.hpp"
 #include <raylib.h>
 
@@ -7,8 +7,8 @@ int main() {
   InitWindow(bounds.x, bounds.y, "physics engine");
   SetTargetFPS(60);
 
-  Entity ball = Entity(6.0, Vector2{SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0},
-                       Vector2{0.0, 5.0}, Vector2{0.0, 0.0}, bounds, BLUE);
+  Entity ball = Entity(20.0, Vector2{SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0},
+                       Vector2{0.0, 5.0}, Vector2{0.0, 0.98}, bounds, BLUE);
 
   while (!WindowShouldClose()) {
     BeginDrawing();

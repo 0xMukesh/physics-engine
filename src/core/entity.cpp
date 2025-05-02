@@ -1,4 +1,6 @@
 #include "entity.hpp"
+#include "common/constants.hpp"
+#include "common/utils.hpp"
 #include <raylib.h>
 
 Entity::Entity(float radius, Vector2 position, Vector2 velocity,
@@ -33,13 +35,15 @@ void Entity::handleBoundaryCollision() {
   // top side of the screen
   if (position.y + radius <= 0) {
     position.y = radius;
-    velocity.y *= -0.5;
+    velocity.y = utils::clipNumber(velocity.y, VELOCITY_REST_THRESHOLD);
+    velocity.y *= -0.8;
   }
 
   // bottom side of the screen
   if (position.y + radius >= screenHeight) {
     position.y = screenHeight - radius;
-    velocity.y *= -0.5;
+    velocity.y = utils::clipNumber(velocity.y, VELOCITY_REST_THRESHOLD);
+    velocity.y *= -0.8;
   }
 }
 

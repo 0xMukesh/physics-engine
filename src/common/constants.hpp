@@ -1,0 +1,5 @@
+#pragma once
+
+#define SCREEN_WIDTH 600
+#define SCREEN_HEIGHT 600
+#define VELOCITY_REST_THRESHOLD 0.1
