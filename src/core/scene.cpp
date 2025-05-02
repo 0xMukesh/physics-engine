@@ -3,7 +3,8 @@
 #include "raylib.h"
 #include <vector>
 
-Scene::Scene(std::vector<Entity> entities) : entities(entities) {}
+Scene::Scene(std::vector<Entity> entities)
+    : entities(entities), selectedEntity(nullptr) {}
 
 void Scene::render() {
   Vector2 mousePosition = GetMousePosition();
