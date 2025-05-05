@@ -1,100 +1,117 @@
 #include "entity.hpp"
+#include "core/constraint.hpp"
 #include <cmath>
 #include <raylib.h>
 
-Entity::Entity(float mass, float radius, Vector2 position, Vector2 velocity,
-               Vector2 acceleration, Vector2 bounds, Color color)
-    : mass(mass), radius(radius), position(position), velocity(velocity),
-      acceleration(acceleration), bounds(bounds), color(color),
-      isSelected(false) {}
+Entity::Entity(float mass, float radius, Vector2 position, Vector2 acceleration,
+               std::shared_ptr<Constraint> constraint, Color color)
+    : mass(mass), radius(radius), positionCurrent(position),
+      positionOld(position), acceleration(acceleration),
+      constraint(std::move(constraint)), color(color) {}
 
 void Entity::updatePosition(float deltaTime) {
-  position.x += velocity.x * deltaTime;
-  position.y += velocity.y * deltaTime;
-}
+  Vector2 temp = positionCurrent;
 
-void Entity::updateVelocity(float deltaTime) {
-  velocity.x += acceleration.x * deltaTime;
-  velocity.y += acceleration.y * deltaTime;
+  positionCurrent.x = (2 * positionCurrent.x) - (positionOld.x) +
+                      acceleration.x * deltaTime * deltaTime;
+  positionCurrent.y = (2 * positionCurrent.y) - (positionOld.y) +
+                      acceleration.y * deltaTime * deltaTime;
+
+  positionOld = temp;
 }
 
 void Entity::handleBoundaryCollision() {
-  float screenWidth = bounds.x;
-  float screenHeight = bounds.y;
-
-  if (position.x - radius <= 0) {
-    position.x = radius;
-    velocity.x *= -0.8;
+  if (!constraint) {
+    return;
   }
 
-  if (position.x + radius >= screenWidth) {
-    position.x = screenWidth - radius;
-    velocity.x *= -0.8;
-  }
+  RectangularConstraint *rectConstraint =
+      dynamic_cast<RectangularConstraint *>(constraint.get());
+  CircularConstraint *circularConstraint =
+      dynamic_cast<CircularConstraint *>(constraint.get());
 
-  if (position.y - radius <= 0 && velocity.y < 0) {
-    position.y = radius;
-    velocity.y *= -0.8;
-  }
+  if (rectConstraint != nullptr) {
+    float width = rectConstraint->width;
+    float height = rectConstraint->height;
 
-  if (position.y + radius >= screenHeight) {
-    position.y = screenHeight - radius;
-    velocity.y *= -0.8;
-  }
-}
+    float horizontalDampingFactor = 0.75f;
+    float verticalDampingFactor = 0.5f;
+    float velocityThreshold = 0.1f;
 
-void Entity::handleEntityCollision(Entity &entity) {
-  float xDist = position.x - entity.position.x;
-  float yDist = position.y - entity.position.y;
+    Vector2 velocity = {positionCurrent.x - positionOld.x,
+                        positionCurrent.y - positionOld.y};
 
-  float dist = std::sqrt(xDist * xDist + yDist * yDist);
-  float minDist = entity.radius + radius;
+    if (positionCurrent.x - radius < 0) {
+      positionCurrent.x = radius;
+      if (fabs(velocity.x) > velocityThreshold) {
+        positionOld.x =
+            positionCurrent.x + velocity.x * horizontalDampingFactor;
+      } else {
+        positionOld.x = positionCurrent.x;
+      }
+    }
 
-  if (dist <= minDist) {
-    DrawText("Collision", 10, 10, 30, RED);
+    if (positionCurrent.x + radius > width) {
+      positionCurrent.x = width - radius;
+      if (fabs(velocity.x) > velocityThreshold) {
+        positionOld.x =
+            positionCurrent.x + velocity.x * horizontalDampingFactor;
+      } else {
+        positionOld.x = positionCurrent.x;
+      }
+    }
 
-    float nx = xDist / dist;
-    float ny = yDist / dist;
+    if (positionCurrent.y - radius < 0) {
+      positionCurrent.y = radius;
+      if (fabs(velocity.y) > velocityThreshold) {
+        positionOld.y = positionCurrent.y + velocity.y * verticalDampingFactor;
+      } else {
+        positionOld.y = positionCurrent.y;
+      }
+    }
 
-    float relVelX = velocity.x - entity.velocity.x;
-    float relVelY = velocity.y - entity.velocity.y;
+    if (positionCurrent.y + radius > height) {
+      positionCurrent.y = height - radius;
+      if (fabs(velocity.y) > velocityThreshold) {
+        positionOld.y = positionCurrent.y + velocity.y * verticalDampingFactor;
+      } else {
+        positionOld.y = positionCurrent.y;
+      }
 
-    float dotProduct = relVelX * nx + relVelY * ny;
+      if (fabs(velocity.x) > 0) {
+        float rollingFriction = 0.95f;
+        positionOld.x = positionCurrent.x + (velocity.x * rollingFriction);
 
-    if (dotProduct > 0)
-      return;
+        if (fabs(velocity.x) < 0.1f) {
+          positionOld.x = positionCurrent.x;
+        }
+      }
+    }
+  } else if (circularConstraint != nullptr) {
+    Vector2 constraintCenter = circularConstraint->center;
+    float constraintRadius = circularConstraint->radius;
 
-    float impulse = (2 * dotProduct) / (mass + entity.mass);
+    float xDist = positionCurrent.x - constraintCenter.x;
+    float yDist = positionCurrent.y - constraintCenter.y;
+    float dist = std::sqrt(xDist * xDist + yDist * yDist);
 
-    velocity.x -= (impulse * mass * nx);
-    velocity.y -= (impulse * mass * ny);
-    entity.velocity.x += (impulse * entity.mass * nx);
-    entity.velocity.y += (impulse * entity.mass * ny);
+    if (dist + radius > constraintRadius) {
+      float nx = xDist / dist;
+      float ny = yDist / dist;
 
-    float overlap = minDist - dist;
-    const float percent = 0.8f;
-    const float slop = 0.01f;
-
-    if (overlap > slop) {
-      float correction = (overlap - slop) / (mass + entity.mass) * percent;
-      position.x += correction * mass * nx;
-      position.y += correction * mass * ny;
-      entity.position.x -= correction * entity.mass * nx;
-      entity.position.y -= correction * entity.mass * ny;
+      positionCurrent.x = constraintCenter.x + nx * (dist - radius);
+      positionCurrent.y = constraintCenter.y + ny * (dist - radius);
     }
   }
 }
 
-void Entity::draw() {
-  DrawCircle(position.x, position.y, radius, color);
+void Entity::handleEntityCollision(Entity &entity) {}
 
-  if (isSelected) {
-    DrawCircleLines(position.x, position.y, radius + 2.0f, YELLOW);
-  }
+void Entity::draw() {
+  DrawCircle(positionCurrent.x, positionCurrent.y, radius, color);
 }
 
 void Entity::render(float deltaTime) {
-  updateVelocity(deltaTime);
   updatePosition(deltaTime);
   handleBoundaryCollision();
   draw();
