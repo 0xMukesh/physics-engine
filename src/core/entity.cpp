@@ -1,4 +1,5 @@
 #include "entity.hpp"
+#include "common/constants.hpp"
 #include "core/constraint.hpp"
 #include <cmath>
 #include <raylib.h>
@@ -95,17 +96,105 @@ void Entity::handleBoundaryCollision() {
     float yDist = positionCurrent.y - constraintCenter.y;
     float dist = std::sqrt(xDist * xDist + yDist * yDist);
 
-    if (dist + radius > constraintRadius) {
-      float nx = xDist / dist;
-      float ny = yDist / dist;
+    if (dist > constraintRadius - radius) {
+      float nx = 0.0f, ny = 0.0f;
+      if (dist > 0.0001f) {
+        nx = xDist / dist;
+        ny = yDist / dist;
+      } else {
+        nx = GetRandomValue(-100, 100) / 100.0f;
+        ny = GetRandomValue(-100, 100) / 100.0f;
+        float randNormLength = std::sqrt(nx * nx + ny * ny);
+        nx /= randNormLength;
+        ny /= randNormLength;
+      }
 
-      positionCurrent.x = constraintCenter.x + nx * (dist - radius);
-      positionCurrent.y = constraintCenter.y + ny * (dist - radius);
+      float targetDist = constraintRadius - radius;
+      if (targetDist < 0)
+        targetDist = 0;
+
+      positionCurrent.x = constraintCenter.x + nx * targetDist;
+      positionCurrent.y = constraintCenter.y + ny * targetDist;
+
+      Vector2 vel = Vector2{positionCurrent.x - positionOld.x,
+                            positionCurrent.y - positionOld.y};
+
+      // v_new = v - 2 * dot(v, n) * n
+      float velDotNormal = vel.x * nx + vel.y * ny;
+      float reflectedVelX = (vel.x - 2 * velDotNormal * nx);
+      float reflectedVelY = (vel.y - 2 * velDotNormal * ny);
+
+      positionOld.x = positionCurrent.x - reflectedVelX;
+      positionOld.y = positionCurrent.y - reflectedVelY;
     }
   }
 }
 
-void Entity::handleEntityCollision(Entity &entity) {}
+void Entity::handleEntityCollision(Entity &entity) {
+  float minDist = radius + entity.radius;
+  float xDist = positionCurrent.x - entity.positionCurrent.x;
+  float yDist = positionCurrent.y - entity.positionCurrent.y;
+  float dist = std::sqrt(xDist * xDist + yDist * yDist);
+
+  if (dist <= minDist) {
+    float nx = 0.0;
+    float ny = 0.0;
+
+    if (dist > 0.0001f) {
+      nx = xDist / dist;
+      ny = yDist / dist;
+    } else {
+      nx = GetRandomValue(-100, 100) / 100.0f;
+      ny = GetRandomValue(-100, 100) / 100.0f;
+      float randNormLength = std::sqrt(nx * nx + ny * ny);
+      nx /= randNormLength;
+      ny /= randNormLength;
+    }
+
+    Vector2 velA = Vector2{positionCurrent.x - positionOld.x,
+                           positionCurrent.y - positionOld.y};
+    Vector2 velB = Vector2{entity.positionCurrent.x - entity.positionOld.x,
+                           entity.positionCurrent.y - entity.positionOld.y};
+
+    float overlap = minDist - dist;
+
+    if (overlap > MIN_CORRECTION) {
+      float totalMass = mass + entity.mass;
+
+      positionCurrent.x -= nx * overlap * (entity.mass / totalMass) * 1.005;
+      positionCurrent.y -= ny * overlap * (entity.mass / totalMass) * 1.005;
+      entity.positionCurrent.x += nx * overlap * (mass / totalMass) * 1.005;
+      entity.positionCurrent.y += ny * overlap * (mass / totalMass) * 1.005;
+    }
+
+    float relVelX = velA.x - velB.x;
+    float relVelY = velA.y - velB.y;
+    float relVelDotNormal = velA.x * nx + relVelY * ny;
+
+    if (relVelDotNormal < 0) {
+      float relVelMagnitude = std::sqrt(relVelX * relVelX + relVelY * relVelY);
+      float restitution = 0.6;
+
+      if (relVelMagnitude < 0.5) {
+        restitution *= (relVelMagnitude * 2.0);
+      }
+
+      float impluse = -(1.0 + restitution) * relVelDotNormal;
+      impluse /= (1.0 / mass) + (1.0 / entity.mass);
+
+      float impulseX = impluse * nx / mass;
+      float impulseY = impluse * ny / mass;
+
+      positionOld.x = positionCurrent.x + (velA.x - impulseX);
+      positionOld.y = positionCurrent.y + (velA.y - impulseY);
+
+      entity.positionOld.x =
+          entity.positionCurrent.x + (velB.x + impulseX * (mass / entity.mass));
+      entity.positionOld.y =
+          entity.positionCurrent.y + (velB.y + impulseY * (mass / entity.mass));
+    }
+  }
+}
 
 void Entity::draw() {
   DrawCircle(positionCurrent.x, positionCurrent.y, radius, color);
