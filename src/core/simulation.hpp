@@ -7,17 +7,18 @@
 
 class Simulation {
 public:
-  std::vector<std::shared_ptr<Object>> objects;
-  std::shared_ptr<Constraint> constraint;
-
   Simulation(std::vector<std::shared_ptr<Object>> objects,
              std::shared_ptr<Constraint> constraint);
-
   void update(float dt);
-  void handleInput();
   void render();
+  void handleInput();
   void draw();
 
 private:
-  void handleCircleCircleCollision(CircularObject *c1, CircularObject *c2);
+  void handleCircleCircleCollision(CircularObject *cobj1,
+                                   CircularObject *cobj2);
+  void checkForStableCluster();
+
+  std::vector<std::shared_ptr<Object>> objects;
+  std::shared_ptr<Constraint> constraint;
 };

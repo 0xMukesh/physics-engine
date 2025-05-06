@@ -9,10 +9,13 @@
 
 int main() {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "simulation");
-  SetTargetFPS(60);
+  SetTargetFPS(120);
 
   RectangularConstraint constraint =
       RectangularConstraint(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  // CircularConstraint constraint = CircularConstraint(
+  // Vec2(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f), 400.0f);
 
   CircularObject ball =
       CircularObject(5.0f, Vec2(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f),
@@ -31,7 +34,9 @@ int main() {
 
     BeginDrawing();
     ClearBackground(BLACK);
+    simulation.draw();
     simulation.render();
+    DrawFPS(10, 10);
     EndDrawing();
   }
 

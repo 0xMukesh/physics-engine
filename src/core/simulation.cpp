@@ -19,20 +19,22 @@ void Simulation::update(float dt) {
     }
   }
 
-  for (size_t i = 0; i < objects.size(); i++) {
-    for (size_t j = 0; j < objects.size(); j++) {
-      if (i == j) {
-        continue;
-      }
+  for (int iter = 0; iter < 2; iter++) {
+    for (size_t i = 0; i < objects.size(); i++) {
+      for (size_t j = 0; j < objects.size(); j++) {
+        if (i == j) {
+          continue;
+        }
 
-      auto obj1 = objects[i];
-      auto obj2 = objects[j];
+        auto obj1 = objects[i];
+        auto obj2 = objects[j];
 
-      auto cobj1 = dynamic_cast<CircularObject *>(obj1.get());
-      auto cobj2 = dynamic_cast<CircularObject *>(obj2.get());
+        auto cobj1 = dynamic_cast<CircularObject *>(obj1.get());
+        auto cobj2 = dynamic_cast<CircularObject *>(obj2.get());
 
-      if (cobj1 != nullptr && cobj2 != nullptr) {
-        handleCircleCircleCollision(cobj1, cobj2);
+        if (cobj1 != nullptr && cobj2 != nullptr) {
+          handleCircleCircleCollision(cobj1, cobj2);
+        }
       }
     }
   }
@@ -42,19 +44,33 @@ void Simulation::handleCircleCircleCollision(CircularObject *cobj1,
                                              CircularObject *cobj2) {
   float minDist = cobj1->radius + cobj2->radius;
   Vec2 distVec = cobj1->currentPosition - cobj2->currentPosition;
-  float dist = distVec.length();
+  float distSquared = distVec.length() * distVec.length();
 
-  if (dist <= minDist) {
-    Vec2 n = distVec / dist;
+  if (distSquared >= minDist * minDist) {
+    return;
+  }
+
+  float dist = std::sqrt(distSquared);
+
+  if (dist < 0.001f) {
+    float angle = static_cast<float>(GetRandomValue(0, 360)) * DEG2RAD;
+    distVec = Vec2(std::cos(angle), std::sin(angle));
+    dist = 0.001f;
+  } else {
+    distVec = distVec / dist;
+  }
+
+  float overlap = minDist - dist;
+
+  if (overlap > 0) {
     float totalMass = cobj1->mass + cobj2->mass;
-    float overlap = minDist - dist;
+    float ratio1 = cobj2->mass / totalMass;
+    float ratio2 = cobj1->mass / totalMass;
 
-    if (overlap > 0.01f) {
-      cobj1->currentPosition =
-          cobj1->currentPosition + (n * overlap * (cobj2->mass / totalMass));
-      cobj2->currentPosition =
-          cobj2->currentPosition - (n * overlap * (cobj1->mass / totalMass));
-    }
+    cobj1->currentPosition =
+        cobj1->currentPosition + (distVec * overlap * ratio1 * 0.8f);
+    cobj2->currentPosition =
+        cobj2->currentPosition - (distVec * overlap * ratio2 * 0.8f);
   }
 }
 
@@ -67,7 +83,7 @@ void Simulation::render() {
 void Simulation::handleInput() {
   Vector2 mousePosition = GetMousePosition();
 
-  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+  if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
     float mass = GetRandomValue(10, 50);
     float radius = mass * 0.75;
     Color color =
@@ -83,4 +99,18 @@ void Simulation::handleInput() {
   }
 }
 
-void Simulation::draw() {}
+void Simulation::draw() {
+  auto rc = dynamic_cast<RectangularConstraint *>(constraint.get());
+  auto cc = dynamic_cast<CircularConstraint *>(constraint.get());
+
+  if (rc != nullptr) {
+    DrawLine(0, 0, rc->width, 0, YELLOW);
+    DrawLine(0, 0, 0, rc->height, YELLOW);
+    DrawLine(0, rc->height, rc->width, rc->height, YELLOW);
+    DrawLine(rc->width, 0, rc->width, rc->height, YELLOW);
+  }
+
+  if (cc != nullptr) {
+    DrawCircleLinesV(Vec2ToVector2(cc->center), cc->radius, YELLOW);
+  }
+}

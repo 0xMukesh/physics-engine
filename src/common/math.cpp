@@ -20,3 +20,4 @@ Vec2 Vec2::operator/(float n) const {
 Vec2 operator*(float n, const Vec2 &v) { return v * n; }
 
 Vec2 Vector2ToVec2(Vector2 &v) { return Vec2(v.x, v.y); }
+Vector2 Vec2ToVector2(Vec2 &v) { return Vector2{v.x, v.y}; }
