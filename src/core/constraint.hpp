@@ -1,10 +1,19 @@
 #pragma once
 
-#include <raylib.h>
+#include "common/math.hpp"
 
 class Constraint {
 public:
-  virtual ~Constraint() = default;
+  Constraint();
+  virtual ~Constraint();
+};
+
+class CircularConstraint : public Constraint {
+public:
+  Vec2 center;
+  float radius;
+
+  CircularConstraint(Vec2 center, float radius);
 };
 
 class RectangularConstraint : public Constraint {
@@ -13,12 +22,4 @@ public:
   float height;
 
   RectangularConstraint(float width, float height);
-};
-
-class CircularConstraint : public Constraint {
-public:
-  Vector2 center;
-  float radius;
-
-  CircularConstraint(Vector2 center, float radius);
 };
