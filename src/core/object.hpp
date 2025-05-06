@@ -31,3 +31,16 @@ public:
   void render() override;
   void handleConstraint(std::shared_ptr<Constraint> constraint) override;
 };
+
+class LineSegmentObject : public Object {
+public:
+  Vec2 start;
+  Vec2 end;
+  Color color;
+
+  LineSegmentObject(Vec2 start, Vec2 end, Color color);
+
+  void update(float dt) override;
+  void render() override;
+  void handleConstraint(std::shared_ptr<Constraint> constraint) override;
+};

@@ -3,6 +3,7 @@
 #include "core/constraint.hpp"
 #include "core/object.hpp"
 #include "raylib.h"
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <memory>
@@ -31,9 +32,15 @@ void Simulation::update(float dt) {
 
         auto cobj1 = dynamic_cast<CircularObject *>(obj1.get());
         auto cobj2 = dynamic_cast<CircularObject *>(obj2.get());
+        auto lobj1 = dynamic_cast<LineSegmentObject *>(obj1.get());
+        auto lobj2 = dynamic_cast<LineSegmentObject *>(obj2.get());
 
         if (cobj1 != nullptr && cobj2 != nullptr) {
           handleCircleCircleCollision(cobj1, cobj2);
+        } else if (lobj1 != nullptr && cobj2 != nullptr) {
+          handleCircleLineCollision(cobj2, lobj1);
+        } else if (cobj1 != nullptr && lobj2 != nullptr) {
+          handleCircleLineCollision(cobj1, lobj2);
         }
       }
     }
@@ -74,6 +81,33 @@ void Simulation::handleCircleCircleCollision(CircularObject *cobj1,
   }
 }
 
+void Simulation::handleCircleLineCollision(CircularObject *c,
+                                           LineSegmentObject *l) {
+  Vec2 lineVec = l->end - l->start;
+  Vec2 circleToLineStart = c->currentPosition - l->start;
+
+  float t = circleToLineStart.dot(lineVec) / lineVec.dot(lineVec);
+  t = std::max(0.0f, std::min(1.0f, t));
+
+  Vec2 closestPoint = l->start + (lineVec * t);
+  Vec2 penetrationVec = c->currentPosition - closestPoint;
+
+  float distance = penetrationVec.length();
+
+  if (distance <= c->radius) {
+    if (distance < 0.001f) {
+      penetrationVec = Vec2(-lineVec.y, lineVec.x);
+      distance = 0.001f;
+    } else {
+      penetrationVec = penetrationVec / distance;
+    }
+
+    float penetrationDepth = c->radius - distance;
+    c->currentPosition =
+        c->currentPosition + (penetrationVec * penetrationDepth);
+  }
+}
+
 void Simulation::render() {
   for (auto object : objects) {
     object->render();
@@ -83,7 +117,7 @@ void Simulation::render() {
 void Simulation::handleInput() {
   Vector2 mousePosition = GetMousePosition();
 
-  if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
     float mass = GetRandomValue(10, 50);
     float radius = mass * 0.75;
     Color color =
@@ -111,6 +145,6 @@ void Simulation::draw() {
   }
 
   if (cc != nullptr) {
-    DrawCircleLinesV(Vec2ToVector2(cc->center), cc->radius, YELLOW);
+    DrawCircleLinesV(cc->center.ToVector2(), cc->radius, YELLOW);
   }
 }

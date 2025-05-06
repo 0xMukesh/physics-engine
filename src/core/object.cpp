@@ -1,10 +1,13 @@
 #include "object.hpp"
 #include "common/math.hpp"
 #include "core/constraint.hpp"
+#include "raylib.h"
+#include <memory>
 
 Object::Object() {}
 Object::~Object() {}
 
+// CircularObject -- START
 CircularObject::CircularObject(float mass, Vec2 position, Vec2 acceleration,
                                float radius, Color color)
     : mass(mass), radius(radius), currentPosition(position),
@@ -20,6 +23,7 @@ void CircularObject::update(float dt) {
   currentPosition = currentPosition + velocity + (acceleration * dt * dt);
   oldPosition = temp;
 }
+
 void CircularObject::handleConstraint(std::shared_ptr<Constraint> constraint) {
   RectangularConstraint *rc =
       dynamic_cast<RectangularConstraint *>(constraint.get());
@@ -58,3 +62,17 @@ void CircularObject::handleConstraint(std::shared_ptr<Constraint> constraint) {
     }
   }
 }
+// CircularObject -- END
+
+// LineSegmentObject -- START
+LineSegmentObject::LineSegmentObject(Vec2 start, Vec2 end, Color color)
+    : start(start), end(end), color(color) {}
+
+void LineSegmentObject::update(float _) {}
+
+void LineSegmentObject::render() {
+  DrawLine(start.x, start.y, end.x, end.y, color);
+}
+
+void LineSegmentObject::handleConstraint(std::shared_ptr<Constraint> _) {}
+// LineSegmentObject -- END

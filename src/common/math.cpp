@@ -1,11 +1,14 @@
 #include "math.hpp"
+#include "raylib.h"
 #include <cmath>
 #include <iostream>
 #include <ostream>
 
 Vec2::Vec2(float x, float y) : x(x), y(y) {}
 
+float Vec2::dot(Vec2 &v) { return x * v.x + y * v.y; }
 float Vec2::length() { return std::sqrt(x * x + y * y); }
+Vector2 Vec2::ToVector2() { return Vector2{x, y}; }
 
 Vec2 Vec2::operator+(const Vec2 &v) const { return Vec2(x + v.x, y + v.y); }
 Vec2 Vec2::operator-(const Vec2 &v) const { return Vec2(x - v.x, y - v.y); }

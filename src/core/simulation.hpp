@@ -17,7 +17,7 @@ public:
 private:
   void handleCircleCircleCollision(CircularObject *cobj1,
                                    CircularObject *cobj2);
-  void checkForStableCluster();
+  void handleCircleLineCollision(CircularObject *c, LineSegmentObject *l);
 
   std::vector<std::shared_ptr<Object>> objects;
   std::shared_ptr<Constraint> constraint;

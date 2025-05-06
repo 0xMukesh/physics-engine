@@ -17,12 +17,19 @@ int main() {
   // CircularConstraint constraint = CircularConstraint(
   // Vec2(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f), 400.0f);
 
-  CircularObject ball =
-      CircularObject(5.0f, Vec2(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f),
-                     Vec2(0.0f, 980.0f), 20.0f, BLUE);
+  // CircularObject ball =
+  //     CircularObject(5.0f, Vec2(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f),
+  //                    Vec2(0.0f, 980.0f), 20.0f, BLUE);
+
+  LineSegmentObject bottomLeftRamp = LineSegmentObject(
+      Vec2(0.0f, SCREEN_HEIGHT - 100.0f), Vec2(100.0f, SCREEN_HEIGHT), WHITE);
+  LineSegmentObject bottomRightRamp =
+      LineSegmentObject(Vec2(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT),
+                        Vec2(SCREEN_WIDTH, SCREEN_HEIGHT - 100.0f), WHITE);
 
   std::vector<std::shared_ptr<Object>> objects = {
-      std::make_shared<CircularObject>(ball)};
+      std::make_shared<LineSegmentObject>(bottomLeftRamp),
+      std::make_shared<LineSegmentObject>(bottomRightRamp)};
 
   Simulation simulation =
       Simulation(objects, std::make_shared<RectangularConstraint>(constraint));

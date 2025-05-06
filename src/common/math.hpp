@@ -9,14 +9,15 @@ public:
 
   Vec2(float x, float y);
 
+  float dot(Vec2 &v);
   float length();
+  Vector2 ToVector2();
+
   Vec2 operator+(const Vec2 &v) const;
   Vec2 operator-(const Vec2 &v) const;
-
   Vec2 operator*(float n) const;
   friend Vec2 operator*(float n, const Vec2 &v);
   Vec2 operator/(float n) const;
 };
 
 Vec2 Vector2ToVec2(Vector2 &v);
-Vector2 Vec2ToVector2(Vec2 &v);
