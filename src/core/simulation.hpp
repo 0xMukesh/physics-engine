@@ -2,8 +2,14 @@
 
 #include "core/constraint.hpp"
 #include "core/object.hpp"
+#include "raylib.h"
 #include <memory>
 #include <vector>
+
+struct MouseDragState {
+  Vector2 *mouseDragStart;
+  bool isDragging;
+};
 
 class Simulation {
 public:
@@ -21,4 +27,5 @@ private:
 
   std::vector<std::shared_ptr<Object>> objects;
   std::shared_ptr<Constraint> constraint;
+  MouseDragState mouseDragState;
 };

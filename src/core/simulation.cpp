@@ -6,11 +6,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 
 Simulation::Simulation(std::vector<std::shared_ptr<Object>> objects,
                        std::shared_ptr<Constraint> constraint)
-    : objects(objects), constraint(constraint) {}
+    : objects(objects), constraint(constraint),
+      mouseDragState(
+          MouseDragState{.mouseDragStart = nullptr, .isDragging = false}) {}
 
 void Simulation::update(float dt) {
   for (auto object : objects) {
@@ -117,7 +120,45 @@ void Simulation::render() {
 void Simulation::handleInput() {
   Vector2 mousePosition = GetMousePosition();
 
-  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+  if (IsKeyDown(KEY_LEFT_CONTROL)) {
+    if (!mouseDragState.isDragging && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+      mouseDragState.isDragging = true;
+      if (mouseDragState.mouseDragStart == nullptr) {
+        mouseDragState.mouseDragStart =
+            new Vector2{mousePosition.x, mousePosition.y};
+      } else {
+        mouseDragState.mouseDragStart->x = mousePosition.x;
+        mouseDragState.mouseDragStart->y = mousePosition.y;
+      }
+    }
+
+    if (mouseDragState.mouseDragStart) {
+      DrawLine(mouseDragState.mouseDragStart->x,
+               mouseDragState.mouseDragStart->y, mousePosition.x,
+               mousePosition.y, WHITE);
+    }
+  }
+
+  if ((mouseDragState.isDragging && IsKeyReleased(KEY_LEFT_CONTROL)) ||
+      (mouseDragState.isDragging && IsMouseButtonReleased(MOUSE_LEFT_BUTTON))) {
+    if (mouseDragState.mouseDragStart != nullptr) {
+      LineSegmentObject line =
+          LineSegmentObject(Vec2(mouseDragState.mouseDragStart->x,
+                                 mouseDragState.mouseDragStart->y),
+                            Vec2(mousePosition.x, mousePosition.y), WHITE);
+
+      objects.push_back(std::make_shared<LineSegmentObject>(line));
+      mouseDragState.isDragging = false;
+    }
+  }
+
+  if (IsKeyReleased(KEY_LEFT_CONTROL)) {
+    mouseDragState.isDragging = false;
+    mouseDragState.mouseDragStart = nullptr;
+  }
+
+  // Commented out ball creation code
+  if (IsKeyDown(KEY_LEFT_ALT) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
     float mass = GetRandomValue(10, 50);
     float radius = mass * 0.75;
     Color color =
