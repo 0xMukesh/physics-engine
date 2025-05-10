@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <iostream>
 #include <memory>
 
 Simulation::Simulation(std::vector<std::shared_ptr<Object>> objects,
@@ -123,6 +122,7 @@ void Simulation::handleInput() {
   if (IsKeyDown(KEY_LEFT_CONTROL)) {
     if (!mouseDragState.isDragging && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
       mouseDragState.isDragging = true;
+
       if (mouseDragState.mouseDragStart == nullptr) {
         mouseDragState.mouseDragStart =
             new Vector2{mousePosition.x, mousePosition.y};
@@ -157,7 +157,6 @@ void Simulation::handleInput() {
     mouseDragState.mouseDragStart = nullptr;
   }
 
-  // Commented out ball creation code
   if (IsKeyDown(KEY_LEFT_ALT) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
     float mass = GetRandomValue(10, 50);
     float radius = mass * 0.75;
@@ -171,6 +170,25 @@ void Simulation::handleInput() {
                                          Vec2(0.0f, 980.0f), radius, color);
 
     objects.push_back(std::make_shared<CircularObject>(ball));
+  }
+
+  if (IsKeyDown(KEY_LEFT_SHIFT)) {
+    Vector2 mousePosition = GetMousePosition();
+
+    for (size_t i = 0; i < objects.size(); i++) {
+      auto obj = objects[i];
+      auto *object = dynamic_cast<LineSegmentObject *>(obj.get());
+
+      if (object != nullptr) {
+        bool isColliding =
+            CheckCollisionPointLine(mousePosition, object->start.ToVector2(),
+                                    object->end.ToVector2(), 3);
+
+        if (isColliding) {
+          objects.erase(objects.begin() + i);
+        }
+      }
+    }
   }
 }
 
