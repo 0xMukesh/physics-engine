@@ -22,6 +22,7 @@ void Simulation::update(float dt) {
     }
   }
 
+  // handle circle and line collisions
   for (int iter = 0; iter < 2; iter++) {
     for (size_t i = 0; i < objects.size(); i++) {
       for (size_t j = 0; j < objects.size(); j++) {
@@ -32,17 +33,53 @@ void Simulation::update(float dt) {
         auto obj1 = objects[i];
         auto obj2 = objects[j];
 
-        auto cobj1 = dynamic_cast<CircularObject *>(obj1.get());
-        auto cobj2 = dynamic_cast<CircularObject *>(obj2.get());
+        auto ciobj1 = dynamic_cast<CircularObject *>(obj1.get());
         auto lobj1 = dynamic_cast<LineSegmentObject *>(obj1.get());
-        auto lobj2 = dynamic_cast<LineSegmentObject *>(obj2.get());
+        auto chobj1 = dynamic_cast<ChainObject *>(obj1.get());
 
-        if (cobj1 != nullptr && cobj2 != nullptr) {
-          handleCircleCircleCollision(cobj1, cobj2);
-        } else if (lobj1 != nullptr && cobj2 != nullptr) {
-          handleCircleLineCollision(cobj2, lobj1);
-        } else if (cobj1 != nullptr && lobj2 != nullptr) {
-          handleCircleLineCollision(cobj1, lobj2);
+        auto ciobj2 = dynamic_cast<CircularObject *>(obj2.get());
+        auto lobj2 = dynamic_cast<LineSegmentObject *>(obj2.get());
+        auto chobj2 = dynamic_cast<ChainObject *>(obj2.get());
+
+        // circle-line collision
+        if (ciobj1 != nullptr && lobj2 != nullptr) {
+          handleCircleLineCollision(ciobj1, lobj2);
+        }
+        if (ciobj2 != nullptr && lobj1 != nullptr) {
+          handleCircleLineCollision(ciobj2, lobj1);
+        }
+
+        // circle-circle collision
+        if (ciobj1 != nullptr && ciobj2 != nullptr) {
+          handleCircleCircleCollision(ciobj1, ciobj2);
+        }
+
+        // chain-circle collision
+        if (chobj1 != nullptr && ciobj2 != nullptr) {
+          handleCircleCircleCollision(&chobj1->obj1, ciobj2);
+          handleCircleCircleCollision(&chobj1->obj2, ciobj2);
+        }
+        if (chobj2 != nullptr && ciobj1 != nullptr) {
+          handleCircleCircleCollision(&chobj2->obj1, ciobj1);
+          handleCircleCircleCollision(&chobj2->obj2, ciobj1);
+        }
+
+        // chain-line collision
+        if (chobj1 != nullptr && lobj2 != nullptr) {
+          handleCircleLineCollision(&chobj1->obj1, lobj2);
+          handleCircleLineCollision(&chobj1->obj2, lobj2);
+        }
+        if (chobj2 != nullptr && lobj1 != nullptr) {
+          handleCircleLineCollision(&chobj2->obj1, lobj1);
+          handleCircleLineCollision(&chobj2->obj2, lobj1);
+        }
+
+        // chain-chain collision
+        if (chobj1 != nullptr && chobj2 != nullptr) {
+          handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj1);
+          handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj2);
+          handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj1);
+          handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj2);
         }
       }
     }
@@ -119,6 +156,11 @@ void Simulation::render() {
 void Simulation::handleInput() {
   Vector2 mousePosition = GetMousePosition();
 
+  // ctrl + left click = drawing lines
+  // alt + left click = adding balls
+  // super + left click = chain object
+  // shift + hover = deleting lines
+
   if (IsKeyDown(KEY_LEFT_CONTROL)) {
     if (!mouseDragState.isDragging && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
       mouseDragState.isDragging = true;
@@ -157,7 +199,8 @@ void Simulation::handleInput() {
     mouseDragState.mouseDragStart = nullptr;
   }
 
-  if (IsKeyDown(KEY_LEFT_ALT) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+  if (IsKeyDown(KEY_LEFT_ALT) && !IsKeyDown(KEY_SPACE) &&
+      IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
     float mass = GetRandomValue(10, 50);
     float radius = mass * 0.75;
     Color color =
@@ -170,6 +213,18 @@ void Simulation::handleInput() {
                                          Vec2(0.0f, 980.0f), radius, color);
 
     objects.push_back(std::make_shared<CircularObject>(ball));
+  }
+
+  if (IsKeyDown(KEY_LEFT_ALT) && IsKeyDown(KEY_SPACE) &&
+      IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    CircularObject obj1 = CircularObject(10.0f, Vector2ToVec2(mousePosition),
+                                         Vec2(0.0f, 980.0f), 10.0f, BLUE);
+    CircularObject obj2 =
+        CircularObject(10.0f, Vec2(mousePosition.x + 50.0f, mousePosition.y),
+                       Vec2(0.0f, 980.0f), 10.0f, BLUE);
+    ChainObject chainObj = ChainObject(obj1, obj2, 50.0f);
+
+    objects.push_back(std::make_shared<ChainObject>(chainObj));
   }
 
   if (IsKeyDown(KEY_LEFT_SHIFT)) {

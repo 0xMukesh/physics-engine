@@ -76,3 +76,39 @@ void LineSegmentObject::render() {
 
 void LineSegmentObject::handleConstraint(std::shared_ptr<Constraint> _) {}
 // LineSegmentObject -- END
+
+// ChainObject -- START
+ChainObject::ChainObject(CircularObject obj1, CircularObject obj2,
+                         float distance)
+    : obj1(obj1), obj2(obj2), distance(distance) {}
+
+void ChainObject::render() {
+  obj1.render();
+  obj2.render();
+  DrawLine(obj1.currentPosition.x, obj1.currentPosition.y,
+           obj2.currentPosition.x, obj2.currentPosition.y, WHITE);
+}
+
+void ChainObject::update(float dt) {
+  obj1.update(dt);
+  obj2.update(dt);
+
+  Vec2 direction = obj2.currentPosition - obj1.currentPosition;
+  float currentDist = direction.length();
+
+  if (currentDist < 0.0001f) {
+    return;
+  }
+
+  float diff = (currentDist - distance) / currentDist;
+  Vec2 offset = direction * 0.5f * diff;
+
+  obj1.currentPosition = obj1.currentPosition + offset;
+  obj2.currentPosition = obj2.currentPosition - offset;
+}
+
+void ChainObject::handleConstraint(std::shared_ptr<Constraint> constraint) {
+  obj1.handleConstraint(constraint);
+  obj2.handleConstraint(constraint);
+}
+// ChainObject -- END

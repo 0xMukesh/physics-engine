@@ -20,12 +20,13 @@ public:
   void handleInput();
   void draw();
 
+  std::vector<std::shared_ptr<Object>> objects;
+
 private:
   void handleCircleCircleCollision(CircularObject *cobj1,
                                    CircularObject *cobj2);
   void handleCircleLineCollision(CircularObject *c, LineSegmentObject *l);
 
-  std::vector<std::shared_ptr<Object>> objects;
   std::shared_ptr<Constraint> constraint;
   MouseDragState mouseDragState;
 };

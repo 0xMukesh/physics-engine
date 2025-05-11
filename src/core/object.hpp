@@ -44,3 +44,16 @@ public:
   void render() override;
   void handleConstraint(std::shared_ptr<Constraint> constraint) override;
 };
+
+class ChainObject : public Object {
+public:
+  CircularObject obj1;
+  CircularObject obj2;
+  float distance;
+
+  ChainObject(CircularObject obj1, CircularObject obj2, float distance);
+
+  void update(float dt) override;
+  void render() override;
+  void handleConstraint(std::shared_ptr<Constraint> constraint) override;
+};
