@@ -1,8 +1,10 @@
 #include "object.hpp"
 #include "common/math.hpp"
 #include "core/constraint.hpp"
+#include "core/simulation.hpp"
 #include "raylib.h"
 #include <memory>
+#include <vector>
 
 Object::Object() {}
 Object::~Object() {}
@@ -34,10 +36,12 @@ void CircularObject::handleConstraint(std::shared_ptr<Constraint> constraint) {
 
     if (currentPosition.y + radius > rc->height) {
       currentPosition.y = rc->height - radius;
+      oldPosition.y = currentPosition.y + velocity.y * 0.7f;
     }
 
     if (currentPosition.y - radius < 0) {
       currentPosition.y = radius;
+      oldPosition.y = currentPosition.y + velocity.y * 0.7f;
     }
 
     if (currentPosition.x + radius > rc->width) {

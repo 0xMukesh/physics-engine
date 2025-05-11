@@ -6,83 +6,182 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
+#include <fmt/core.h>
 #include <memory>
+#include <optional>
+#include <vector>
 
-Simulation::Simulation(std::vector<std::shared_ptr<Object>> objects,
-                       std::shared_ptr<Constraint> constraint)
-    : objects(objects), constraint(constraint),
+// PairHash -- START
+template <class T1, class T2>
+std::size_t PairHash::operator()(const std::pair<T1, T2> &p) const {
+  auto h1 = std::hash<T1>{}(p.first);
+  auto h2 = std::hash<T2>{}(p.second);
+  return h1 ^ (h2 << 1);
+};
+// PairHash -- END
+
+// Grid -- START
+Grid::Grid(float size, float screenWidth, float screenHeight) : size(size) {
+  cols = screenWidth / size + 1;
+  rows = screenHeight / size + 1;
+}
+
+void Grid::clear() {
+  for (auto &[k, v] : grid) {
+    v.clear();
+  }
+}
+
+void Grid::insert(std::shared_ptr<CircularObject> object) {
+  int row = static_cast<int>(object->currentPosition.y / size);
+  int col = static_cast<int>(object->currentPosition.x / size);
+
+  grid[{row, col}].push_back(object);
+}
+
+void Grid::getNeighbours(
+    int row, int col, std::vector<std::shared_ptr<CircularObject>> &out_objs) {
+  for (int dr = -1; dr <= 1; dr++) {
+    for (int dc = -1; dc <= 1; dc++) {
+      int nr = row + dr;
+      int nc = col + dc;
+
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) {
+        continue;
+      }
+
+      auto key = std::make_pair(nr, nc);
+      auto it = grid.find(key);
+
+      if (it != grid.end()) {
+        out_objs.insert(out_objs.end(), it->second.begin(), it->second.end());
+      }
+    }
+  }
+}
+// Grid -- END
+
+// Simulation -- START
+Simulation::Simulation(float screenWidth, float screenHeight,
+                       std::vector<std::shared_ptr<Object>> objects,
+                       std::shared_ptr<Constraint> constraint,
+                       bool useGridHashing, float gridHashingSize)
+    : objects(objects), screenWidth(screenWidth), screenHeight(screenHeight),
+      useGridHashing(useGridHashing), constraint(constraint),
       mouseDragState(
-          MouseDragState{.mouseDragStart = nullptr, .isDragging = false}) {}
+          MouseDragState{.mouseDragStart = nullptr, .isDragging = false}) {
+  if (useGridHashing && gridHashingSize > 0) {
+    grid = Grid{gridHashingSize, screenWidth, screenHeight};
+  }
+}
 
 void Simulation::update(float dt) {
-  for (auto object : objects) {
-    {
-      object->update(dt);
-      object->handleConstraint(constraint);
+  for (auto &object : objects) {
+    object->update(dt);
+    object->handleConstraint(constraint);
+  }
+
+  if (useGridHashing && grid.has_value()) {
+    grid->clear();
+
+    for (auto &obj : objects) {
+      if (auto circ = std::dynamic_pointer_cast<CircularObject>(obj)) {
+        grid->insert(circ);
+      }
     }
   }
 
-  // handle circle and line collisions
+  handleCollisions();
+}
+
+void Simulation::handleCollisions() {
   for (int iter = 0; iter < 2; iter++) {
-    for (size_t i = 0; i < objects.size(); i++) {
-      for (size_t j = 0; j < objects.size(); j++) {
-        if (i == j) {
+    if (!useGridHashing) {
+      for (size_t i = 0; i < objects.size(); ++i) {
+        for (size_t j = i + 1; j < objects.size(); ++j) {
+          handleObjObjCollision(objects[i], objects[j]);
+        }
+      }
+    } else {
+      if (!grid.has_value()) {
+        return;
+      }
+
+      std::vector<std::shared_ptr<CircularObject>> neighborhood_objects_cache;
+      neighborhood_objects_cache.reserve(100);
+
+      for (auto const &[cell_key, primary_cell_objects] : grid->grid) {
+        if (primary_cell_objects.empty()) {
           continue;
         }
 
-        auto obj1 = objects[i];
-        auto obj2 = objects[j];
+        neighborhood_objects_cache.clear();
+        grid->getNeighbours(cell_key.first, cell_key.second,
+                            neighborhood_objects_cache);
 
-        auto ciobj1 = dynamic_cast<CircularObject *>(obj1.get());
-        auto lobj1 = dynamic_cast<LineSegmentObject *>(obj1.get());
-        auto chobj1 = dynamic_cast<ChainObject *>(obj1.get());
-
-        auto ciobj2 = dynamic_cast<CircularObject *>(obj2.get());
-        auto lobj2 = dynamic_cast<LineSegmentObject *>(obj2.get());
-        auto chobj2 = dynamic_cast<ChainObject *>(obj2.get());
-
-        // circle-line collision
-        if (ciobj1 != nullptr && lobj2 != nullptr) {
-          handleCircleLineCollision(ciobj1, lobj2);
-        }
-        if (ciobj2 != nullptr && lobj1 != nullptr) {
-          handleCircleLineCollision(ciobj2, lobj1);
-        }
-
-        // circle-circle collision
-        if (ciobj1 != nullptr && ciobj2 != nullptr) {
-          handleCircleCircleCollision(ciobj1, ciobj2);
-        }
-
-        // chain-circle collision
-        if (chobj1 != nullptr && ciobj2 != nullptr) {
-          handleCircleCircleCollision(&chobj1->obj1, ciobj2);
-          handleCircleCircleCollision(&chobj1->obj2, ciobj2);
-        }
-        if (chobj2 != nullptr && ciobj1 != nullptr) {
-          handleCircleCircleCollision(&chobj2->obj1, ciobj1);
-          handleCircleCircleCollision(&chobj2->obj2, ciobj1);
-        }
-
-        // chain-line collision
-        if (chobj1 != nullptr && lobj2 != nullptr) {
-          handleCircleLineCollision(&chobj1->obj1, lobj2);
-          handleCircleLineCollision(&chobj1->obj2, lobj2);
-        }
-        if (chobj2 != nullptr && lobj1 != nullptr) {
-          handleCircleLineCollision(&chobj2->obj1, lobj1);
-          handleCircleLineCollision(&chobj2->obj2, lobj1);
-        }
-
-        // chain-chain collision
-        if (chobj1 != nullptr && chobj2 != nullptr) {
-          handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj1);
-          handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj2);
-          handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj1);
-          handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj2);
+        for (const auto &obj1_circ_ptr : primary_cell_objects) {
+          for (const auto &obj2_circ_ptr : neighborhood_objects_cache) {
+            if (obj1_circ_ptr.get() < obj2_circ_ptr.get()) {
+              handleCircleCircleCollision(obj1_circ_ptr.get(),
+                                          obj2_circ_ptr.get());
+            }
+          }
         }
       }
     }
+  }
+}
+
+void Simulation::handleObjObjCollision(std::shared_ptr<Object> obj1,
+                                       std::shared_ptr<Object> obj2) {
+  auto ciobj1 = dynamic_cast<CircularObject *>(obj1.get());
+  auto lobj1 = dynamic_cast<LineSegmentObject *>(obj1.get());
+  auto chobj1 = dynamic_cast<ChainObject *>(obj1.get());
+
+  auto ciobj2 = dynamic_cast<CircularObject *>(obj2.get());
+  auto lobj2 = dynamic_cast<LineSegmentObject *>(obj2.get());
+  auto chobj2 = dynamic_cast<ChainObject *>(obj2.get());
+
+  // circle-line collision
+  if (ciobj1 != nullptr && lobj2 != nullptr) {
+    handleCircleLineCollision(ciobj1, lobj2);
+  }
+  if (ciobj2 != nullptr && lobj1 != nullptr) {
+    handleCircleLineCollision(ciobj2, lobj1);
+  }
+
+  // circle-circle collision
+  if (ciobj1 != nullptr && ciobj2 != nullptr) {
+    handleCircleCircleCollision(ciobj1, ciobj2);
+  }
+
+  // chain-circle collision
+  if (chobj1 != nullptr && ciobj2 != nullptr) {
+    handleCircleCircleCollision(&chobj1->obj1, ciobj2);
+    handleCircleCircleCollision(&chobj1->obj2, ciobj2);
+  }
+  if (chobj2 != nullptr && ciobj1 != nullptr) {
+    handleCircleCircleCollision(&chobj2->obj1, ciobj1);
+    handleCircleCircleCollision(&chobj2->obj2, ciobj1);
+  }
+
+  // chain-line collision
+  if (chobj1 != nullptr && lobj2 != nullptr) {
+    handleCircleLineCollision(&chobj1->obj1, lobj2);
+    handleCircleLineCollision(&chobj1->obj2, lobj2);
+  }
+  if (chobj2 != nullptr && lobj1 != nullptr) {
+    handleCircleLineCollision(&chobj2->obj1, lobj1);
+    handleCircleLineCollision(&chobj2->obj2, lobj1);
+  }
+
+  // chain-chain collision
+  if (chobj1 != nullptr && chobj2 != nullptr) {
+    handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj1);
+    handleCircleCircleCollision(&chobj1->obj1, &chobj2->obj2);
+    handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj1);
+    handleCircleCircleCollision(&chobj2->obj1, &chobj1->obj2);
   }
 }
 
@@ -262,3 +361,4 @@ void Simulation::draw() {
     DrawCircleLinesV(cc->center.ToVector2(), cc->radius, YELLOW);
   }
 }
+// Simulation -- END
