@@ -1,10 +1,8 @@
 #include "object.hpp"
 #include "common/math.hpp"
 #include "core/constraint.hpp"
-#include "core/simulation.hpp"
 #include "raylib.h"
 #include <memory>
-#include <vector>
 
 Object::Object() {}
 Object::~Object() {}

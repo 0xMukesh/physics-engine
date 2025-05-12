@@ -23,38 +23,47 @@ int main() {
   Vec2 startPosition(SCREEN_WIDTH / 2.0f, 50);
   Vec2 gravity(0, 980.0f);
 
-  float spawnTimer = 0.0f;
-  float elapsedTime = 0.0f;
   float spawnInterval = 0.1f;
   int particleIndex = 0;
+  const float PHYSICS_DT = 1.0f / 120.0f;
+  float accumulator = 0.0f;
+  float simulationTime = 0.0f;
+  float spawnClock = 0.0f;
 
   while (!WindowShouldClose()) {
-    float dt = GetFrameTime();
-    spawnTimer += dt;
-    elapsedTime += dt;
+    float frameTime = GetFrameTime();
+    accumulator += frameTime;
 
-    while (spawnTimer >= spawnInterval) {
-      spawnTimer -= spawnInterval;
+    while (accumulator >= PHYSICS_DT) {
+      spawnClock += PHYSICS_DT;
+      simulationTime += PHYSICS_DT;
 
-      Color color = particleIndex % 2 == 0   ? RED
-                    : particleIndex % 3 == 0 ? BLUE
-                                             : GREEN;
+      while (spawnClock >= spawnInterval) {
+        spawnClock -= spawnInterval;
 
-      CircularObject obj(5.0f, startPosition, gravity, 5.0f, color);
-      float angle = -PI / 2.0f * std::cosf(elapsedTime * 2.0f);
+        if (simulation.objects.size() >= 500) {
+          break;
+        }
 
-      Vec2 direction = Vec2(std::sinf(angle), std::cosf(angle));
-      obj.oldPosition = obj.currentPosition - direction * 200.0f * dt;
+        Color color = particleIndex % 2 == 0   ? RED
+                      : particleIndex % 3 == 0 ? BLUE
+                                               : GREEN;
 
-      if (simulation.objects.size() >= 500) {
-        break;
+        CircularObject obj(5.0f, startPosition, gravity, 5.0f, color);
+
+        float angle = -PI / 2.0f * std::cosf(simulationTime * 2.0f);
+        Vec2 direction = Vec2(std::sinf(angle), std::cosf(angle));
+
+        obj.oldPosition = obj.currentPosition - direction * 200.0f * PHYSICS_DT;
+
+        simulation.objects.push_back(std::make_shared<CircularObject>(obj));
+        particleIndex++;
       }
 
-      simulation.objects.push_back(std::make_shared<CircularObject>(obj));
-      particleIndex++;
+      simulation.update(PHYSICS_DT);
+      accumulator -= PHYSICS_DT;
     }
 
-    simulation.update(dt);
     simulation.handleInput();
 
     BeginDrawing();

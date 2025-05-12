@@ -109,7 +109,7 @@ void Simulation::handleCollisions() {
       }
 
       std::vector<std::shared_ptr<CircularObject>> neighborhood_objects_cache;
-      neighborhood_objects_cache.reserve(100);
+      neighborhood_objects_cache.reserve(50);
 
       for (auto const &[cell_key, primary_cell_objects] : grid->grid) {
         if (primary_cell_objects.empty()) {
@@ -122,10 +122,17 @@ void Simulation::handleCollisions() {
 
         for (const auto &obj1_circ_ptr : primary_cell_objects) {
           for (const auto &obj2_circ_ptr : neighborhood_objects_cache) {
-            if (obj1_circ_ptr.get() < obj2_circ_ptr.get()) {
-              handleCircleCircleCollision(obj1_circ_ptr.get(),
-                                          obj2_circ_ptr.get());
+            if (obj1_circ_ptr.get() == obj2_circ_ptr.get()) {
+              continue;
             }
+
+            if (reinterpret_cast<uintptr_t>(obj1_circ_ptr.get()) >=
+                reinterpret_cast<uintptr_t>(obj2_circ_ptr.get())) {
+              continue;
+            }
+
+            handleCircleCircleCollision(obj1_circ_ptr.get(),
+                                        obj2_circ_ptr.get());
           }
         }
       }
@@ -198,8 +205,7 @@ void Simulation::handleCircleCircleCollision(CircularObject *cobj1,
   float dist = std::sqrt(distSquared);
 
   if (dist < 0.001f) {
-    float angle = static_cast<float>(GetRandomValue(0, 360)) * DEG2RAD;
-    distVec = Vec2(std::cos(angle), std::sin(angle));
+    distVec = Vec2(1.0f, 0.0f);
     dist = 0.001f;
   } else {
     distVec = distVec / dist;
